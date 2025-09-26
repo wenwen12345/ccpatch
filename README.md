@@ -1,15 +1,19 @@
 # ccpatch
 
-To install dependencies:
+## 介绍
+
+ccpatch 是一个用于修改 Claude 代码 CLI 的工具。
+
+## 安装
+
+使用 npm pnpm 或 bun
 
 ```bash
-bun install
+npm install wnwen12345/ccpatch
 ```
 
-To run:
+## 使用
 
 ```bash
-bun run index.ts
+ccpatch /path/to/claude/code/cli.js
 ```
-
-This project was created using `bun init` in bun v1.2.19. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
