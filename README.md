@@ -2,21 +2,32 @@
 
 ## 介绍
 
-ccpatch 是一个用于修改 Claude Code CLI 的补丁工具，支持多种补丁的配置化管理。
+ccpatch 是一个用于修改 Claude Code CLI 的 AST 补丁工具。它使用 Babel 解析器修改 JavaScript 代码以绕过某些验证和显示限制，支持多种补丁的配置化管理。
 
 ## 特性
 
 - 🔧 **首次运行自动配置** - 没有配置文件时自动启动配置向导
 - 🎯 **交互式补丁选择** - 可选择启用/禁用特定补丁
-- 📦 **模块化补丁系统** - 支持验证补丁、上下文补丁等
+- 📦 **模块化补丁系统** - 支持验证补丁、上下文补丁、ESC中断补丁等
+- 🛠️ **AST 级别修改** - 基于 Babel 的精确代码转换
 - 🚀 **简单易用** - 一键应用已配置的补丁
 
 ## 安装
 
-使用 npm、pnpm 或 bun：
+使用 npm 全局安装：
 
 ```bash
-npm install wenwen12345/ccpatch
+npm install -g wenwen12345/ccpatch
+```
+
+或使用其他包管理器：
+
+```bash
+# 使用 pnpm
+pnpm add -g wenwen12345/ccpatch
+
+# 使用 bun
+bun add -g wenwen12345/ccpatch
 ```
 
 ## 使用
@@ -51,6 +62,7 @@ ccpatch --version
 
 - **验证补丁** (`validationPatch`) - 绕过模型名称验证
 - **上下文补丁** (`contextLowPatch`) - 移除上下文低提示
+- **ESC中断补丁** (`escInterruptPatch`) - 移除 esc to interrupt 提示
 
 ## 工作流程
 

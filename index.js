@@ -6,6 +6,7 @@ import { parse } from "@babel/parser";
 import generate from "@babel/generator";
 import { patchASTWithValidation } from "./patches/validationPatch.js";
 import { patchASTWithContextLowRemoval } from "./patches/contextLowPatch.js";
+import { patchASTWithEscInterruptRemoval } from "./patches/escInterruptPatch.js";
 import { readConfig } from "./lib/config.js";
 import { interactivePatchConfig } from "./lib/interactive.js";
 
@@ -61,6 +62,13 @@ async function applyPatches(filePath, config) {
     if (config.enabledPatches.includes("contextLowPatch")) {
       console.log("Applying context low patch...");
       const { ast: newAst, wasModified } = patchASTWithContextLowRemoval(modifiedAst);
+      modifiedAst = newAst;
+      hasModifications = hasModifications || wasModified;
+    }
+
+    if (config.enabledPatches.includes("escInterruptPatch")) {
+      console.log("Applying esc interrupt patch...");
+      const { ast: newAst, wasModified } = patchASTWithEscInterruptRemoval(modifiedAst);
       modifiedAst = newAst;
       hasModifications = hasModifications || wasModified;
     }
