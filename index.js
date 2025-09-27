@@ -16,16 +16,20 @@ function showHelp() {
 ccpatch - Claude Code 补丁工具
 
 用法:
-  ccpatch [文件名]           应用配置的补丁到指定文件
-  ccpatch config            配置要启用的补丁
+  ccpatch <文件路径>         应用配置的补丁到指定文件
+  ccpatch config            配置要启用的补丁和默认文件路径(可选)
 
 选项:
   -h, --help               显示此帮助信息
   -v, --version            显示版本信息
 
 示例:
-  ccpatch cli.js           对 cli.js 应用已配置的补丁
+  ccpatch /path/to/cli.js  对指定文件应用已配置的补丁
   ccpatch config           进入交互式配置模式
+
+注意:
+  - 如果设置了默认路径，可以直接运行 ccpatch (无参数)
+  - 否则必须指定文件路径
 `);
 }
 
@@ -115,17 +119,13 @@ async function main() {
   }
 
   // 处理文件补丁
-  const TARGET_FILE = args[0] || "cli.js";
-  const filePath = path.resolve(process.cwd(), TARGET_FILE);
-
-  // 读取配置
   const config = await readConfig();
 
   // 如果是首次运行（配置文件不存在），自动进入配置页面
   if (config.isNewConfig) {
     console.log("🔧 检测到首次运行，正在启动配置向导...");
     await interactivePatchConfig();
-    console.log("\n配置完成！现在可以使用 ccpatch 对文件应用补丁了。");
+    console.log("\n配置完成！现在可以使用 ccpatch <文件路径> 对文件应用补丁了。");
     return;
   }
 
@@ -134,6 +134,16 @@ async function main() {
     return;
   }
 
+  // 必须提供文件路径或者配置了默认路径
+  const TARGET_FILE = args[0] || config.cliPath;
+  if (!TARGET_FILE) {
+    console.log("❌ 请提供文件路径或在配置中设置默认路径:");
+    console.log("   ccpatch <文件路径>");
+    console.log("   或运行 'ccpatch config' 设置默认路径");
+    return;
+  }
+
+  const filePath = path.resolve(process.cwd(), TARGET_FILE);
   console.log(`Enabled patches: ${config.enabledPatches.join(", ")}`);
   await applyPatches(filePath, config);
 }
