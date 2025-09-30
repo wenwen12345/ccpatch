@@ -17,9 +17,10 @@ ccpatch 是一个用于修改 Claude Code CLI 的 AST 补丁工具。它使用 B
 - `patches/` - 包含具体的AST补丁实现
 
 ### 补丁系统
-当前包含两个补丁：
+当前包含三个补丁：
 1. `validationPatch.js` - 绕过模型名称验证，通过查找特定字符串并替换包含函数的实现
 2. `contextLowPatch.js` - 移除上下文低提示，替换特定字符串并修改相关函数返回null
+3. `escInterruptPatch.js` - 移除ESC中断提示，查找和删除包含'esc'或'to interrupt'的createElement调用
 
 ## 常用命令
 
@@ -32,14 +33,16 @@ npm install
 node index.js [目标文件]
 node index.js config  # 配置模式
 
-# 应用补丁到默认文件 (cli.js)
-ccpatch
+# 使用命令行选项
+node index.js -p validationPatch,escInterruptPatch [目标文件]  # 指定特定补丁
+node index.js --help  # 显示帮助
+node index.js --version  # 显示版本
 
-# 应用补丁到指定文件
-ccpatch /path/to/target.js
-
-# 配置启用的补丁
-ccpatch config
+# 如果全局安装了工具
+ccpatch  # 应用补丁到配置的默认文件
+ccpatch /path/to/target.js  # 应用补丁到指定文件
+ccpatch config  # 配置启用的补丁和默认路径
+ccpatch -p validationPatch,contextLowPatch cli.js  # 指定特定补丁
 ```
 
 ### 测试和验证
@@ -67,8 +70,10 @@ npx tsc --noEmit
 ## 配置系统
 
 - 配置文件位置: `~/.ccpatch/config.json`
-- 默认配置: `{ enabledPatches: [] }`
-- 可用补丁通过 `getAvailablePatches()` 函数定义
+- 默认配置: `{ enabledPatches: [], cliPath: "" }`
+- 可用补丁通过 `lib/config.js` 中的 `getAvailablePatches()` 函数定义
+- 支持首次运行自动配置向导
+- 命令行选项 `-p/--patches` 可覆盖配置文件设置
 
 ## 补丁开发指南
 
@@ -76,7 +81,8 @@ npx tsc --noEmit
 1. 在 `patches/` 目录创建新的补丁文件
 2. 导出一个函数，接受 AST 参数，返回 `{ ast, wasModified }` 对象
 3. 在 `lib/config.js` 的 `getAvailablePatches()` 中注册新补丁
-4. 在 `index.js` 主流程中添加补丁应用逻辑
+4. 在 `index.js` 主流程中添加补丁应用逻辑（需要手动添加到applyPatches函数）
+5. 补丁函数应该使用 `@babel/traverse` 遍历AST并使用 `@babel/types` 进行修改
 
 ## 重要注意事项
 
