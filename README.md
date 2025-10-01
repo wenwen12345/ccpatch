@@ -18,17 +18,17 @@ ccpatch 是一个用于修改 Claude Code CLI 的 AST 补丁工具。它使用 B
 使用 npm 全局安装：
 
 ```bash
-npm install -g wenwen12345/ccpatch#main
+npm install -g ccpatch@latest
 ```
 
 或使用其他包管理器：
 
 ```bash
 # 使用 pnpm
-pnpm add -g wenwen12345/ccpatch#main
+pnpm add -g ccpatch@latest
 
 # 使用 bun
-bun add -g wenwen12345/ccpatch#main
+bun add -g ccpatch@latest
 ```
 
 ## 使用
