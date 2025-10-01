@@ -8,7 +8,8 @@ import { patchASTWithValidation } from "./patches/validationPatch.js";
 import { patchASTWithContextLowRemoval } from "./patches/contextLowPatch.js";
 import { patchASTWithEscInterruptRemoval } from "./patches/escInterruptPatch.js";
 import { readConfig, getAvailablePatches } from "./lib/config.js";
-import { interactivePatchConfig } from "./lib/interactive.js";
+import { interactivePatchConfig, interactiveRestore } from "./lib/interactive.js";
+import { createBackup } from "./lib/backup.js";
 
 // 显示帮助信息
 function showHelp() {
@@ -18,6 +19,7 @@ ccpatch - Claude Code 补丁工具
 用法:
   ccpatch <文件路径>         应用配置的补丁到指定文件
   ccpatch config            配置要启用的补丁和默认文件路径(可选)
+  ccpatch restore [文件]    恢复文件备份(交互式选择)
 
 选项:
   -h, --help               显示此帮助信息
@@ -32,6 +34,7 @@ ccpatch - Claude Code 补丁工具
 示例:
   ccpatch /path/to/cli.js                           对指定文件应用已配置的补丁
   ccpatch config                                    进入交互式配置模式
+  ccpatch restore /path/to/cli.js                   恢复文件到之前的备份
   ccpatch -p validationPatch /path/to/cli.js       仅应用验证补丁
   ccpatch -p validationPatch,contextLowPatch cli.js 应用多个补丁
 
@@ -39,12 +42,13 @@ ccpatch - Claude Code 补丁工具
   - 如果设置了默认路径，可以直接运行 ccpatch (无参数)
   - 使用 -p 选项时会忽略配置文件中的补丁设置
   - 多个补丁可以用逗号分隔或多次使用 -p 选项
+  - 应用补丁时会自动创建备份到 ~/.ccpatch/backup/ 目录
 `);
 }
 
 // 显示版本信息
 function showVersion() {
-  console.log("ccpatch v1.0.0");
+  console.log("ccpatch v1.0.2");
 }
 
 // 解析命令行参数
@@ -53,6 +57,7 @@ function parseArguments(args) {
     patches: [],
     targetFile: null,
     isConfig: false,
+    isRestore: false,
     isHelp: false,
     isVersion: false
   };
@@ -66,6 +71,13 @@ function parseArguments(args) {
       result.isVersion = true;
     } else if (arg === "config") {
       result.isConfig = true;
+    } else if (arg === "restore") {
+      result.isRestore = true;
+      // restore命令后面可能跟文件路径
+      if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+        result.targetFile = args[i + 1];
+        i++;
+      }
     } else if (arg === "-p" || arg === "--patches") {
       // 下一个参数应该是补丁列表
       if (i + 1 < args.length) {
@@ -74,7 +86,7 @@ function parseArguments(args) {
         result.patches.push(...patches);
         i++; // 跳过下一个参数
       }
-    } else if (!arg.startsWith("-") && !result.targetFile) {
+    } else if (!arg.startsWith("-") && !result.targetFile && !result.isConfig && !result.isRestore) {
       // 第一个非选项参数作为目标文件
       result.targetFile = arg;
     }
@@ -101,11 +113,15 @@ function validatePatches(patches) {
 // 应用补丁到文件
 async function applyPatches(filePath, enabledPatches) {
   try {
-    // --- 1. 读取文件 ---
+    // --- 1. 创建备份 ---
+    console.log("Creating backup...");
+    await createBackup(filePath);
+
+    // --- 2. 读取文件 ---
     console.log(`Reading file: ${filePath}`);
     const sourceCode = await fs.readFile(filePath, "utf8");
 
-    // --- 2. 解析为 AST ---
+    // --- 3. 解析为 AST ---
     console.log("Parsing AST...");
     const ast = parse(sourceCode, {
       sourceType: "module",
@@ -115,7 +131,7 @@ async function applyPatches(filePath, enabledPatches) {
     let modifiedAst = ast;
     let hasModifications = false;
 
-    // --- 3. 根据启用的补丁应用 ---
+    // --- 4. 根据启用的补丁应用 ---
     if (enabledPatches.includes("validationPatch")) {
       console.log("Applying validation patch...");
       const { ast: newAst, wasModified } = patchASTWithValidation(modifiedAst);
@@ -137,7 +153,7 @@ async function applyPatches(filePath, enabledPatches) {
       hasModifications = hasModifications || wasModified;
     }
 
-    // --- 4. 生成并写回文件 ---
+    // --- 5. 生成并写回文件 ---
     if (hasModifications) {
       console.log("Generating modified code...");
       const { code } = generate(modifiedAst);
@@ -176,6 +192,23 @@ async function main() {
   // 处理config子命令
   if (parsedArgs.isConfig) {
     await interactivePatchConfig();
+    return;
+  }
+
+  // 处理restore子命令
+  if (parsedArgs.isRestore) {
+    const config = await readConfig();
+    const targetFile = parsedArgs.targetFile || config.cliPath;
+
+    if (!targetFile) {
+      console.log("❌ 请提供文件路径或在配置中设置默认路径:");
+      console.log("   ccpatch restore <文件路径>");
+      console.log("   或运行 'ccpatch config' 设置默认路径");
+      return;
+    }
+
+    const filePath = path.resolve(process.cwd(), targetFile);
+    await interactiveRestore(filePath);
     return;
   }
 
